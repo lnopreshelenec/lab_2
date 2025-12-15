@@ -9,21 +9,15 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    converterwindow.cpp \
     main.cpp \
     mainwindow.cpp \
-    note.cpp \
-    notemanager.cpp \
-    notewindow.cpp \
-    textconverter.cpp
+    sign.cpp \
+    signlist.cpp
 
 HEADERS += \
-    converterwindow.h \
     mainwindow.h \
-    note.h \
-    notemanager.h \
-    notewindow.h \
-    textconverter.h
+    sign.h \
+    signlist.h
 
 FORMS += \
     mainwindow.ui
