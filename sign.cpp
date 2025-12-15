@@ -83,7 +83,7 @@ bool SIGN::operator==(const SIGN& other) const {
 bool SIGN::isValidDate(int day, int month, int year) const {
     if (year < 1900 || year > QDate::currentDate().year())
         return false;
-    if (month < 1 || month > 12)
+    if ((month < 1) || (month > 12))
         return false;
 
     QDate date(year, month, day);

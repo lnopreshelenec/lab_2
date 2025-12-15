@@ -12,12 +12,14 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     sign.cpp \
-    signlist.cpp
+    signlist.cpp \
+    textanalyzer.cpp
 
 HEADERS += \
     mainwindow.h \
     sign.h \
-    signlist.h
+    signlist.h \
+    textanalyzer.h
 
 FORMS += \
     mainwindow.ui

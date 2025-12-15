@@ -2,7 +2,9 @@
 #include "ui_mainwindow.h"
 #include <QMessageBox>
 #include <QInputDialog>
-#include <QMenu>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QFileInfo>
 #include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -11,8 +13,11 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Создаем список
+    // Создаем список знаков зодиака
     signList = new SignList();
+
+    // Создаем анализатор текста
+    textAnalyzer = new TextAnalyzer();
 
     // Настройка таблицы
     setupTable();
@@ -21,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     QStringList zodiacSigns = {"Овен", "Телец", "Близнецы", "Рак",
                                "Лев", "Дева", "Весы", "Скорпион",
                                "Стрелец", "Козерог", "Водолей", "Рыбы"};
-    ui->filterComboBox->addItems(zodiacSigns);
+    // ui->filterComboBox->addItems(zodiacSigns);
 
     // Добавляем тестовые данные
     addSampleData();
@@ -29,15 +34,14 @@ MainWindow::MainWindow(QWidget *parent)
     // Обновление таблицы
     updateTable();
 
-    // Устанавливаем контекстное меню для таблицы
-    ui->tableWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->tableWidget, &QTableWidget::customContextMenuRequested,
-            this, &MainWindow::showMenu);
+    // Скрываем вкладку работы с файлом (если не настроена в UI)
+    // ui->tabWidget->setTabEnabled(1, false);
 }
 
 MainWindow::~MainWindow()
 {
     delete signList;
+    delete textAnalyzer;
     delete ui;
 }
 
@@ -51,22 +55,18 @@ void MainWindow::setupTable()
     ui->tableWidget->setColumnWidth(1, 150);
     ui->tableWidget->setColumnWidth(2, 150);
     ui->tableWidget->setColumnWidth(3, 150);
-
-    // Включаем контекстное меню
-    ui->tableWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 }
 
 void MainWindow::addSampleData()
 {
     try {
-        // Добавляем несколько тестовых записей
         signList->add(new SIGN("Иван", "Иванов", 15, 3, 1990));
         signList->add(new SIGN("Петр", "Петров", 25, 4, 1985));
         signList->add(new SIGN("Мария", "Сидорова", 10, 6, 1995));
         signList->add(new SIGN("Анна", "Смирнова", 5, 7, 1992));
         signList->add(new SIGN("Алексей", "Козлов", 23, 8, 1985));
     } catch (const SignException& e) {
-        showMessage("Ошибка", e.getMessage());
+        showErrorMessage(e.getMessage());
     }
 }
 
@@ -90,9 +90,14 @@ void MainWindow::updateTable()
     }
 }
 
-void MainWindow::showMessage(const QString& title, const QString& message)
+void MainWindow::showInfoMessage(const QString& message)
 {
-    QMessageBox::information(this, title, message);
+    QMessageBox::information(this, "Информация", message);
+}
+
+void MainWindow::showErrorMessage(const QString& message)
+{
+    QMessageBox::critical(this, "Ошибка", message);
 }
 
 // Поиск по фамилии
@@ -101,19 +106,17 @@ void MainWindow::on_pushButton_clicked()
     QString lastName = ui->searchLineEdit->text().trimmed();
 
     if (lastName.isEmpty()) {
-        showMessage("Ошибка", "Введите фамилию для поиска");
+        showErrorMessage("Введите фамилию для поиска");
         return;
     }
 
     int index = signList->findByLastName(lastName);
 
     if (index == -1) {
-        showMessage("Результат поиска",
-                    QString("Записей с фамилией '%1' не найдено.").arg(lastName));
+        showInfoMessage(QString("Записей с фамилией '%1' не найдено.").arg(lastName));
     } else {
         SIGN* foundSign = signList->get(index);
-        showMessage("Найдено",
-                    QString("Найден человек:\n\n%1").arg(foundSign->toString()));
+        showInfoMessage(QString("Найден человек:\n\n%1").arg(foundSign->toString()));
 
         // Подсвечиваем найденную строку в таблице
         ui->tableWidget->selectRow(index);
@@ -123,14 +126,13 @@ void MainWindow::on_pushButton_clicked()
 // Поиск по знаку зодиака
 void MainWindow::on_pushButton_2_clicked()
 {
-    QString zodiac = ui->filterComboBox->currentText();
+    // QString zodiac = ui->filterComboBox->currentText();
 
     // Выводим результаты в консоль
-    signList->findByZodiac(zodiac);
+    // signList->findByZodiac(zodiac);
 
     // Показываем сообщение пользователю
-    showMessage("Поиск по знаку",
-                QString("Результаты поиска по знаку '%1' выведены в консоль.").arg(zodiac));
+    // showInfoMessage(QString("Результаты поиска по знаку '%1' выведены в консоль.").arg(zodiac));
 }
 
 // Сортировка по дате рождения
@@ -138,89 +140,99 @@ void MainWindow::on_pushButton_3_clicked()
 {
     signList->sortByBirthDate();
     updateTable();
-    showMessage("Сортировка", "Записи отсортированы по дате рождения");
+    showInfoMessage("Записи отсортированы по дате рождения");
 
     // Также выводим в консоль для демонстрации
     std::cout << "\n=== После сортировки ===" << std::endl;
     signList->displayAll();
 }
 
-// Двойной клик по таблице
-void MainWindow::on_tableWidget_doubleClicked(const QModelIndex &index)
+// Загрузка файла для анализа текста
+void MainWindow::on_loadButton_clicked()
 {
-    int row = index.row();
-    if (row >= 0 && row < signList->getSize()) {
-        SIGN* sign = signList->get(row);
-        showMessage("Информация", sign->toString());
+    QString filename = QFileDialog::getOpenFileName(this,
+                                                    "Открыть текстовый файл",
+                                                    "",
+                                                    "Текстовые файлы (*.txt);;Все файлы (*.*)"
+                                                    );
+
+    if (filename.isEmpty()) {
+        return;
+    }
+
+    try {
+        QString content = readFileContent(filename);
+
+        // Проверяем, есть ли текстовое поле для отображения содержимого
+        // Если нет, просто анализируем текст
+        textAnalyzer->analyzeText(content);
+
+        // Выводим информацию о загрузке
+        showInfoMessage(QString("Файл '%1' успешно загружен и проанализирован.\n"
+                                "Всего слов: %2")
+                            .arg(QFileInfo(filename).fileName())
+                            .arg(textAnalyzer->getWordCount()));
+
+    } catch (const TextAnalyzerException& e) {
+        showErrorMessage(e.getMessage());
     }
 }
 
-// Контекстное меню для дополнительных операций
-void MainWindow::showMenu()
+// Анализ текста
+void MainWindow::on_analyzeButton_clicked()
 {
-    QMenu menu(this);
-
-    menu.addAction("Добавить запись", this, [this]() {
-        bool ok;
-        QString firstName = QInputDialog::getText(this, "Добавить запись",
-                                                  "Введите имя:", QLineEdit::Normal, "", &ok);
-        if (!ok || firstName.isEmpty()) return;
-
-        QString lastName = QInputDialog::getText(this, "Добавить запись",
-                                                 "Введите фамилию:", QLineEdit::Normal, "", &ok);
-        if (!ok || lastName.isEmpty()) return;
-
-        int day = QInputDialog::getInt(this, "Добавить запись",
-                                       "Введите день рождения:", 1, 1, 31, 1, &ok);
-        if (!ok) return;
-
-        int month = QInputDialog::getInt(this, "Добавить запись",
-                                         "Введите месяц рождения:", 1, 1, 12, 1, &ok);
-        if (!ok) return;
-
-        int year = QInputDialog::getInt(this, "Добавить запись",
-                                        "Введите год рождения:", 2000, 1900, 2024, 1, &ok);
-        if (!ok) return;
-
-        try {
-            signList->add(new SIGN(firstName, lastName, day, month, year));
-            updateTable();
-            showMessage("Успех", "Запись успешно добавлена");
-        } catch (const SignException& e) {
-            showMessage("Ошибка", e.getMessage());
+    try {
+        // Проверяем, был ли загружен текст
+        if (textAnalyzer->getWordCount() == 0) {
+            showErrorMessage("Сначала загрузите текстовый файл");
+            return;
         }
-    });
 
-    menu.addAction("Добавить из консоли", this, [this]() {
-        std::cout << "\n=== Добавление новой записи ===" << std::endl;
+        // Находим самое длинное слово
+        int count = 0;
+        char* longestWord = textAnalyzer->findLongestWord(count);
 
-        try {
-            SIGN newSign;
-            std::cin >> newSign;
-            signList->add(new SIGN(newSign));
-            updateTable();
-            showMessage("Успех", "Запись добавлена из консоли");
-        } catch (const SignException& e) {
-            showMessage("Ошибка", e.getMessage());
+        if (longestWord) {
+            // Выводим результат (предполагаем, что есть соответствующие поля в UI)
+            // Если их нет, выводим в сообщении
+            ui->countLineEdit->setText(QString::number(count));
+            ui->longestWordLineEdit->setText(longestWord);
+            // ui->analyzeText->setText();
+
+
+            // QString result = QString("Результаты анализа:\n"
+            //                          "• Самое длинное слово: '%1'\n"
+            //                          "• Встречается в тексте: %2 раз(а)\n"
+            //                          "• Всего слов в тексте: %3")
+            //                      .arg(longestWord)
+            //                      .arg(count)
+            //                      .arg(textAnalyzer->getWordCount());
+
+            // showInfoMessage(result);
+
+            // Освобождаем память
+            delete[] longestWord;
         }
-    });
 
-    menu.addSeparator();
+    } catch (const TextAnalyzerException& e) {
+        showErrorMessage(e.getMessage());
+    }
+}
 
-    menu.addAction("Показать все в консоли", this, [this]() {
-        signList->displayAll();
-        showMessage("Информация", "Все записи выведены в консоль");
-    });
+QString MainWindow::readFileContent(const QString& filename)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        throw TextAnalyzerException("Не удалось открыть файл для чтения");
+    }
 
-    menu.addAction("Очистить список", this, [this]() {
-        int answer = QMessageBox::question(this, "Подтверждение",
-                                           "Вы уверены, что хотите очистить весь список?");
-        if (answer == QMessageBox::Yes) {
-            signList->clear();
-            updateTable();
-            showMessage("Успех", "Список очищен");
-        }
-    });
+    QTextStream in(&file);
+    QString content = in.readAll();
+    file.close();
 
-    menu.exec(QCursor::pos());
+    if (content.isEmpty()) {
+        throw TextAnalyzerException("Файл пустой");
+    }
+
+    return content;
 }
