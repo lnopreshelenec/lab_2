@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>916</width>
     <height>600</height>
    </rect>
   </property>
@@ -19,7 +19,7 @@
      <rect>
       <x>10</x>
       <y>9</y>
-      <width>781</width>
+      <width>881</width>
       <height>531</height>
      </rect>
     </property>
@@ -34,7 +34,7 @@
       <property name="geometry">
        <rect>
         <x>227</x>
-        <y>50</y>
+        <y>39</y>
         <width>161</width>
         <height>34</height>
        </rect>
@@ -47,7 +47,7 @@
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>50</y>
+        <y>39</y>
         <width>181</width>
         <height>32</height>
        </rect>
@@ -57,7 +57,7 @@
       <property name="geometry">
        <rect>
         <x>110</x>
-        <y>20</y>
+        <y>9</y>
         <width>151</width>
         <height>18</height>
        </rect>
@@ -74,9 +74,9 @@
      <widget class="QPushButton" name="pushButton_3">
       <property name="geometry">
        <rect>
-        <x>20</x>
-        <y>90</y>
-        <width>741</width>
+        <x>680</x>
+        <y>130</y>
+        <width>161</width>
         <height>34</height>
        </rect>
       </property>
@@ -88,10 +88,75 @@
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>131</y>
-        <width>761</width>
+        <y>80</y>
+        <width>641</width>
         <height>361</height>
        </rect>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="addButton">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>180</y>
+        <width>161</width>
+        <height>34</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Добавить</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="addAtPositionButton">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>230</y>
+        <width>161</width>
+        <height>34</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Добавить на позицию</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="editButton">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>370</y>
+        <width>161</width>
+        <height>34</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Редактировать</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="deleteButton">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>280</y>
+        <width>161</width>
+        <height>34</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Удалить</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="clearButton">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>330</y>
+        <width>161</width>
+        <height>34</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Очистить всё</string>
       </property>
      </widget>
     </widget>
@@ -179,7 +244,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>916</width>
      <height>30</height>
     </rect>
    </property>

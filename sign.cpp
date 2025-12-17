@@ -46,12 +46,13 @@ SIGN::SIGN(const SIGN& other) {
 }
 
 SIGN::~SIGN() {
+    qDebug() << "Вызван деструктор для объекта SIGN: "
+             << *lastName << " " << *firstName;
     delete firstName;
     delete lastName;
     delete zodiacSign;
 
-    qDebug() << "Вызван деструктор для объекта SIGN: "
-             << *lastName << " " << *firstName;
+
 }
 
 SIGN& SIGN::operator=(const SIGN& other) {

@@ -10,18 +10,50 @@ SignList::SignList() : data(nullptr), capacity(10), size(0) {
     qDebug() << "Создан SignList с вместимостью" << capacity;
 }
 
+SignList::SignList(const SignList& other) : data(nullptr), capacity(0), size(0) {
+    deepCopy(other);
+    qDebug() << "Вызван конструктор копирования SignList";
+}
+
 SignList::~SignList() {
     clear();
     delete[] data;
+    data = nullptr;
     qDebug() << "Уничтожен SignList";
 }
 
+SignList& SignList::operator=(const SignList& other) {
+    if (this != &other) {
+        clear();
+        delete[] data;
+        deepCopy(other);
+    }
+    return *this;
+}
+
+void SignList::deepCopy(const SignList& other) {
+    capacity = other.capacity;
+    size = other.size;
+    data = new SIGN*[capacity];
+
+    for (int i = 0; i < capacity; i++) {
+        if (i < size && other.data[i]) {
+            data[i] = new SIGN(*other.data[i]); // Глубокое копирование объекта
+        } else {
+            data[i] = nullptr;
+        }
+    }
+}
+
 void SignList::resize(int newCapacity) {
+    if (newCapacity <= size) return;
+
     SIGN** newData = new SIGN*[newCapacity];
 
     for (int i = 0; i < size; i++) {
         newData[i] = data[i];
     }
+
     for (int i = size; i < newCapacity; i++) {
         newData[i] = nullptr;
     }
@@ -29,18 +61,17 @@ void SignList::resize(int newCapacity) {
     delete[] data;
     data = newData;
     capacity = newCapacity;
-
-    qDebug() << "SignList увеличен до" << newCapacity;
 }
 
 void SignList::add(SIGN* sign) {
+    if (!sign) return;
+
     if (size >= capacity) {
         resize(capacity * 2);
     }
 
     data[size] = sign;
     size++;
-    qDebug() << "Добавлен элемент в SignList. Текущий размер:" << size;
 }
 
 SIGN* SignList::get(int index) const {
@@ -54,7 +85,6 @@ int SignList::getSize() const {
     return size;
 }
 
-// Пузырьковая сортировка
 void SignList::sortByBirthDate() {
     for (int i = 0; i < size - 1; i++) {
         for (int j = 0; j < size - i - 1; j++) {
@@ -65,29 +95,52 @@ void SignList::sortByBirthDate() {
             }
         }
     }
-    qDebug() << "SignList отсортирован по дате рождения";
-}
-
-void SignList::displayAll() const {
-    if (size == 0) {
-        std::cout << "Список пуст." << std::endl;
-        return;
-    }
-
-    std::cout << "\n=== Все записи (" << size << " шт.) ===" << std::endl;
-    for (int i = 0; i < size; i++) {
-        std::cout << i + 1 << ". ";
-        data[i]->display();
-    }
-    std::cout << "======================================" << std::endl;
 }
 
 void SignList::clear() {
     for (int i = 0; i < size; i++) {
-        delete data[i];
+        if (data[i]) {
+            delete data[i];
+            data[i] = nullptr;
+        }
     }
     size = 0;
 }
+
+void SignList::replace(int index, SIGN* newSign) {
+    if (index < 0 || index >= size) {
+        throw SignException("Некорректный индекс для замены");
+    }
+
+    if (!newSign) {
+        throw SignException("Новый элемент не может быть nullptr");
+    }
+
+    if (data[index]) {
+        delete data[index];
+    }
+
+    data[index] = newSign;
+}
+
+void SignList::remove(int index) {
+    if (index < 0 || index >= size) {
+        throw SignException("Некорректный индекс для удаления");
+    }
+    qDebug()<<data;
+    if (data[index] != nullptr) {
+        delete data[index];
+    }
+
+    // Сдвигаем элементы
+    for (int i = index; i < size - 1; i++) {
+        data[i] = data[i + 1];
+    }
+
+    data[size - 1] = nullptr;
+    size--;
+}
+
 
 int SignList::findByLastName(const QString& lastName) const {
     for (int i = 0; i < size; i++) {
@@ -98,19 +151,3 @@ int SignList::findByLastName(const QString& lastName) const {
     return -1;
 }
 
-void SignList::findByZodiac(const QString& zodiac) const {
-    std::cout << "\n=== Люди со знаком '" << zodiac.toStdString() << "' ===" << std::endl;
-    bool found = false;
-
-    for (int i = 0; i < size; i++) {
-        if (data[i]->getZodiacSign() == zodiac) {
-            std::cout << i + 1 << ". ";
-            data[i]->display();
-            found = true;
-        }
-    }
-
-    if (!found) {
-        std::cout << "Записей не найдено." << std::endl;
-    }
-}

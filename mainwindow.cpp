@@ -6,6 +6,7 @@
 #include <QTextStream>
 #include <QFileInfo>
 #include <QDebug>
+#include <QDate>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -22,20 +23,11 @@ MainWindow::MainWindow(QWidget *parent)
     // Настройка таблицы
     setupTable();
 
-    // Настройка фильтра по знакам
-    QStringList zodiacSigns = {"Овен", "Телец", "Близнецы", "Рак",
-                               "Лев", "Дева", "Весы", "Скорпион",
-                               "Стрелец", "Козерог", "Водолей", "Рыбы"};
-    // ui->filterComboBox->addItems(zodiacSigns);
-
     // Добавляем тестовые данные
     addSampleData();
 
     // Обновление таблицы
     updateTable();
-
-    // Скрываем вкладку работы с файлом (если не настроена в UI)
-    // ui->tabWidget->setTabEnabled(1, false);
 }
 
 MainWindow::~MainWindow()
@@ -55,6 +47,82 @@ void MainWindow::setupTable()
     ui->tableWidget->setColumnWidth(1, 150);
     ui->tableWidget->setColumnWidth(2, 150);
     ui->tableWidget->setColumnWidth(3, 150);
+
+    // Включаем выбор строк
+    ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+}
+
+SIGN* MainWindow::createSignFromDialog(bool editMode, SIGN* originalSign)
+{
+    bool ok;
+
+    // Устанавливаем значения по умолчанию
+    QString defaultFirstName = editMode ? originalSign->getFirstName() : "";
+    QString defaultLastName = editMode ? originalSign->getLastName() : "";
+    int defaultDay = editMode ? originalSign->getBirthDay() : 1;
+    int defaultMonth = editMode ? originalSign->getBirthMonth() : 1;
+    int defaultYear = editMode ? originalSign->getBirthYear() : 2000;
+
+    // Диалог для ввода имени
+    QString firstName = QInputDialog::getText(this,
+                                              editMode ? "Редактирование записи" : "Добавление записи",
+                                              "Введите имя:",
+                                              QLineEdit::Normal,
+                                              defaultFirstName,
+                                              &ok);
+
+    if (!ok || firstName.isEmpty()) {
+        throw SignException("Имя не может быть пустым");
+    }
+
+    // Диалог для ввода фамилии
+    QString lastName = QInputDialog::getText(this,
+                                             editMode ? "Редактирование записи" : "Добавление записи",
+                                             "Введите фамилию:",
+                                             QLineEdit::Normal,
+                                             defaultLastName,
+                                             &ok);
+
+    if (!ok || lastName.isEmpty()) {
+        throw SignException("Фамилия не может быть пустой");
+    }
+
+    // Диалог для ввода дня
+    int day = QInputDialog::getInt(this,
+                                   editMode ? "Редактирование записи" : "Добавление записи",
+                                   "Введите день рождения (1-31):",
+                                   defaultDay,
+                                   1, 31, 1, &ok);
+
+    if (!ok) {
+        throw SignException("День рождения не указан");
+    }
+
+    // Диалог для ввода месяца
+    int month = QInputDialog::getInt(this,
+                                     editMode ? "Редактирование записи" : "Добавление записи",
+                                     "Введите месяц рождения (1-12):",
+                                     defaultMonth,
+                                     1, 12, 1, &ok);
+
+    if (!ok) {
+        throw SignException("Месяц рождения не указан");
+    }
+
+    // Диалог для ввода года
+    int year = QInputDialog::getInt(this,
+                                    editMode ? "Редактирование записи" : "Добавление записи",
+                                    "Введите год рождения:",
+                                    defaultYear,
+                                    1900, QDate::currentDate().year(), 1, &ok);
+
+    if (!ok) {
+        throw SignException("Год рождения не указан");
+    }
+
+    // Создаем новый объект SIGN
+    return new SIGN(firstName, lastName, day, month, year);
 }
 
 void MainWindow::addSampleData()
@@ -123,18 +191,6 @@ void MainWindow::on_pushButton_clicked()
     }
 }
 
-// Поиск по знаку зодиака
-void MainWindow::on_pushButton_2_clicked()
-{
-    // QString zodiac = ui->filterComboBox->currentText();
-
-    // Выводим результаты в консоль
-    // signList->findByZodiac(zodiac);
-
-    // Показываем сообщение пользователю
-    // showInfoMessage(QString("Результаты поиска по знаку '%1' выведены в консоль.").arg(zodiac));
-}
-
 // Сортировка по дате рождения
 void MainWindow::on_pushButton_3_clicked()
 {
@@ -142,9 +198,170 @@ void MainWindow::on_pushButton_3_clicked()
     updateTable();
     showInfoMessage("Записи отсортированы по дате рождения");
 
-    // Также выводим в консоль для демонстрации
-    std::cout << "\n=== После сортировки ===" << std::endl;
-    signList->displayAll();
+    // // Также выводим в консоль для демонстрации
+    // std::cout << "\n=== После сортировки ===" << std::endl;
+    // signList->displayAll();
+}
+
+// Добавить запись (кнопка)
+void MainWindow::on_addButton_clicked()
+{
+    try {
+        SIGN* newSign = createSignFromDialog(false);
+        signList->add(newSign);
+        updateTable();
+        showInfoMessage("Запись успешно добавлена в конец списка");
+    } catch (const SignException& e) {
+        showErrorMessage(e.getMessage());
+    }
+}
+
+// Добавить на позицию (кнопка)
+// Добавить на позицию (кнопка)
+void MainWindow::on_addAtPositionButton_clicked()
+{
+    int currentSize = signList->getSize();
+    if (currentSize == 0) {
+        on_addButton_clicked();
+        return;
+    }
+
+    bool ok;
+    int position = QInputDialog::getInt(this, "Добавление записи",
+                                        "Введите позицию для добавления (1 - " +
+                                            QString::number(currentSize + 1) + "):",
+                                        1, 1, currentSize + 1, 1, &ok);
+
+    if (!ok) return;
+
+    try {
+        SIGN* newSign = createSignFromDialog(false);
+
+        // Создаем новый список
+        SignList* tempList = new SignList();
+
+        // Добавляем элементы до указанной позиции (создаем копии)
+        for (int i = 0; i < position - 1; i++) {
+            SIGN* originalSign = signList->get(i);
+            SIGN* copySign = new SIGN(originalSign->getFirstName(),
+                                      originalSign->getLastName(),
+                                      originalSign->getBirthDay(),
+                                      originalSign->getBirthMonth(),
+                                      originalSign->getBirthYear());
+            tempList->add(copySign);
+        }
+
+        // Добавляем новый элемент
+        tempList->add(newSign);
+
+        // Добавляем остальные элементы (создаем копии)
+        for (int i = position - 1; i < currentSize; i++) {
+            SIGN* originalSign = signList->get(i);
+            SIGN* copySign = new SIGN(originalSign->getFirstName(),
+                                      originalSign->getLastName(),
+                                      originalSign->getBirthDay(),
+                                      originalSign->getBirthMonth(),
+                                      originalSign->getBirthYear());
+            tempList->add(copySign);
+        }
+
+        // Заменяем старый список новым
+        delete signList;
+        signList = tempList;
+
+        updateTable();
+        showInfoMessage(QString("Запись успешно добавлена на позицию %1").arg(position));
+
+    } catch (const SignException& e) {
+        showErrorMessage(e.getMessage());
+    }
+}
+
+// Редактировать запись (кнопка)
+void MainWindow::on_editButton_clicked()
+{
+    int selectedRow = ui->tableWidget->currentRow();
+
+    if (selectedRow < 0 || selectedRow >= signList->getSize()) {
+        showErrorMessage("Выберите запись для редактирования");
+        return;
+    }
+
+    try {
+        SIGN* originalSign = signList->get(selectedRow);
+        SIGN* editedSign = createSignFromDialog(true, originalSign);
+
+        // Заменяем старую запись
+        signList->replace(selectedRow, editedSign);
+
+        updateTable();
+        showInfoMessage("Запись успешно отредактирована");
+
+    } catch (const SignException& e) {
+        showErrorMessage(e.getMessage());
+    }
+}
+
+
+// Удалить запись (кнопка)
+void MainWindow::on_deleteButton_clicked()
+{
+    // Проверяем, есть ли записи
+    if (signList->getSize() == 0) {
+        showErrorMessage("Нет записей для удаления");
+        return;
+    }
+
+    int selectedRow = ui->tableWidget->currentRow();
+    qDebug() << "Удаление: selectedRow =" << selectedRow << ", size =" << signList->getSize();
+
+    if (selectedRow < 0 || selectedRow >= signList->getSize()) {
+        showErrorMessage("Выберите запись для удаления");
+        return;
+    }
+
+    try {
+        SIGN* signToDelete = signList->get(selectedRow);
+        if (!signToDelete) {
+            showErrorMessage("Ошибка: запись не найдена");
+            return;
+        }
+
+        QString fullName = signToDelete->getLastName() + " " + signToDelete->getFirstName();
+
+        int answer = QMessageBox::question(this, "Подтверждение удаления",
+                                           "Вы уверены, что хотите удалить запись:\n" + fullName + "?",
+                                           QMessageBox::Yes | QMessageBox::No);
+
+        if (answer == QMessageBox::Yes) {
+            signList->remove(selectedRow);
+            updateTable();
+            showInfoMessage("Запись успешно удалена");
+        }
+
+    } catch (const SignException& e) {
+        showErrorMessage(e.getMessage());
+    }
+}
+
+// Очистить все (кнопка)
+void MainWindow::on_clearButton_clicked()
+{
+    if (signList->getSize() == 0) {
+        showInfoMessage("Список уже пуст");
+        return;
+    }
+
+    int answer = QMessageBox::question(this, "Подтверждение очистки",
+                                       "Вы уверены, что хотите удалить все записи?\n"
+                                       "Это действие нельзя отменить.",
+                                       QMessageBox::Yes | QMessageBox::No);
+
+    if (answer == QMessageBox::Yes) {
+        signList->clear();
+        updateTable();
+        showInfoMessage("Все записи удалены");
+    }
 }
 
 // Загрузка файла для анализа текста
@@ -163,8 +380,7 @@ void MainWindow::on_loadButton_clicked()
     try {
         QString content = readFileContent(filename);
 
-        // Проверяем, есть ли текстовое поле для отображения содержимого
-        // Если нет, просто анализируем текст
+        // Анализируем текст
         textAnalyzer->analyzeText(content);
 
         // Выводим информацию о загрузке
@@ -193,22 +409,9 @@ void MainWindow::on_analyzeButton_clicked()
         char* longestWord = textAnalyzer->findLongestWord(count);
 
         if (longestWord) {
-            // Выводим результат (предполагаем, что есть соответствующие поля в UI)
-            // Если их нет, выводим в сообщении
-            ui->countLineEdit->setText(QString::number(count));
+            // Выводим результат
             ui->longestWordLineEdit->setText(longestWord);
-            // ui->analyzeText->setText();
-
-
-            // QString result = QString("Результаты анализа:\n"
-            //                          "• Самое длинное слово: '%1'\n"
-            //                          "• Встречается в тексте: %2 раз(а)\n"
-            //                          "• Всего слов в тексте: %3")
-            //                      .arg(longestWord)
-            //                      .arg(count)
-            //                      .arg(textAnalyzer->getWordCount());
-
-            // showInfoMessage(result);
+            ui->countLineEdit->setText(QString::number(count));
 
             // Освобождаем память
             delete[] longestWord;
@@ -218,6 +421,17 @@ void MainWindow::on_analyzeButton_clicked()
         showErrorMessage(e.getMessage());
     }
 }
+
+// void MainWindow::clearTextFields()
+// {
+//     ui->longestWordLineEdit->clear();
+//     ui->countLineEdit->clear();
+
+//     delete textAnalyzer;
+//     textAnalyzer = new TextAnalyzer();
+
+//     showInfoMessage("Поля текста очищены");
+// }
 
 QString MainWindow::readFileContent(const QString& filename)
 {
